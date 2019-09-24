@@ -8,7 +8,7 @@ metadata:
   labels:
     app: strimzi
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       name: grafana
@@ -46,6 +46,15 @@ spec:
         emptyDir: {}
       - name: grafana-logs
         emptyDir: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/instance-type
+                operator: In
+                values:
+                - c5.xlarge
 ---
 apiVersion: v1
 kind: Service

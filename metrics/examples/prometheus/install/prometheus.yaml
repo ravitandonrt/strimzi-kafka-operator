@@ -43,7 +43,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: prometheus-server
-    namespace: myproject
+    namespace: default
 
 ---
 apiVersion: monitoring.coreos.com/v1
@@ -52,8 +52,9 @@ metadata:
   name: prometheus
   labels:
     app: strimzi
+namespace: default
 spec:
-  replicas: 1
+  replicas: 3
   serviceAccountName: prometheus-server
   serviceMonitorSelector:
     matchLabels:
@@ -66,14 +67,18 @@ spec:
     matchLabels:
       role: alert-rules
       app: strimzi
-  alerting:
-    alertmanagers:
-    - namespace: myproject
-      name: alertmanager
-      port: alertmanager
   additionalScrapeConfigs:
     name: additional-scrape-configs
     key: prometheus-additional.yaml
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: beta.kubernetes.io/instance-type
+            operator: In
+            values:
+            - c5.xlarge
 ---
 apiVersion: v1
 kind: Service

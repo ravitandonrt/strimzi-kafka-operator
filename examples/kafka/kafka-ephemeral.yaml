@@ -1,7 +1,10 @@
 apiVersion: kafka.strimzi.io/v1beta1
 kind: Kafka
 metadata:
+  labels:
+    app: my-cluster
   name: my-cluster
+  namespace: default
 spec:
   kafka:
     version: 2.3.0
@@ -10,16 +13,230 @@ spec:
       plain: {}
       tls: {}
     config:
+      auto.leader.rebalance.enable: true
+      unclean.leader.election.enable: false
+      num.partitions: 3
+      inter.broker.protocol.version: 0.10.2-IV0
+      log.message.format.version: 0.10.2-IV0
+      num.recovery.threads.per.data.dir: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-      log.message.format.version: "2.3"
+      log.retention.hours: 168
+      log.segment.bytes: 1073741824
+      log.retention.check.interval.ms: 300000
+      num.network.threads: 8
+      num.io.threads: 8
+      message.max.bytes: 10000000
+      socket.send.buffer.bytes: 1048576
+      socket.receive.buffer.bytes: 1048576
+      socket.request.max.bytes: 104857600
+      group.initial.rebalance.delay.ms: 0
+    jvmOptions:
+      "-Xmx": "8g"
+      "-Xms": "8g"
+      "-XX":
+        "UseG1GC": true
+        "MaxGCPauseMillis": 20
+        "InitiatingHeapOccupancyPercent": 35
+        "ExplicitGCInvokesConcurrent": true
+        "UseParNewGC": false
+    metrics:
+      # Inspired by config from Kafka 2.0.0 example rules:
+      # https://github.com/prometheus/jmx_exporter/blob/master/example_configs/kafka-2_0_0.yml
+      lowercaseOutputName: true
+      rules:
+      # Special cases and very specific rules
+      - pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+        labels:
+          clientId: "$3"
+          topic: "$4"
+          partition: "$5"
+      - pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+        name: kafka_server_$1_$2
+        type: GAUGE
+        labels:
+          clientId: "$3"
+          broker: "$4:$5"
+      - pattern : kafka.coordinator.(\w+)<type=(.+), name=(.+)><>Value
+        name: kafka_coordinator_$1_$2_$3
+        type: GAUGE
+      # Generic per-second counters with 0-2 key/value pairs
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+), (.+)=(.+)><>Count
+        name: kafka_$1_$2_$3_total
+        type: COUNTER
+        labels:
+          "$4": "$5"
+          "$6": "$7"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+)><>Count
+        name: kafka_$1_$2_$3_total
+        type: COUNTER
+        labels:
+          "$4": "$5"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*><>Count
+        name: kafka_$1_$2_$3_total
+        type: COUNTER
+      # Generic gauges with 0-2 key/value pairs
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Value
+        name: kafka_$1_$2_$3
+        type: GAUGE
+        labels:
+          "$4": "$5"
+          "$6": "$7"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Value
+        name: kafka_$1_$2_$3
+        type: GAUGE
+        labels:
+          "$4": "$5"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
+        name: kafka_$1_$2_$3
+        type: GAUGE
+      # Emulate Prometheus 'Summary' metrics for the exported 'Histogram's.
+      #
+      # Note that these are missing the '_sum' metric!
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Count
+        name: kafka_$1_$2_$3_count
+        type: COUNTER
+        labels:
+          "$4": "$5"
+          "$6": "$7"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*), (.+)=(.+)><>(\d+)thPercentile
+        name: kafka_$1_$2_$3
+        type: GAUGE
+        labels:
+          "$4": "$5"
+          "$6": "$7"
+          quantile: "0.$8"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Count
+        name: kafka_$1_$2_$3_count
+        type: COUNTER
+        labels:
+          "$4": "$5"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*)><>(\d+)thPercentile
+        name: kafka_$1_$2_$3
+        type: GAUGE
+        labels:
+          "$4": "$5"
+          quantile: "0.$6"
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)><>Count
+        name: kafka_$1_$2_$3_count
+        type: COUNTER
+      - pattern: kafka.(\w+)<type=(.+), name=(.+)><>(\d+)thPercentile
+        name: kafka_$1_$2_$3
+        type: GAUGE
+        labels:
+          quantile: "0.$4"
     storage:
-      type: ephemeral
+      type: jbod
+      volumes:
+      - id: 0
+        type: ephemeral
+      - id: 1
+        type: ephemeral
+    rack:
+      topologyKey: failure-domain.beta.kubernetes.io/zone
+    readinessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+    template:
+      pod:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                  - key: "beta.kubernetes.io/instance-type"
+                    operator: In
+                    values:
+                    - i3en.2xlarge
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: name
+                      operator: In
+                      values:
+                        - my-cluster-kafka
+                topologyKey: "kubernetes.io/hostname"
   zookeeper:
     replicas: 3
+    jvmOptions:
+      "-Xmx": "4g"
+      "-Xms": "4g"
+    metrics:
+      # Inspired by Zookeeper rules
+      # https://github.com/prometheus/jmx_exporter/blob/master/example_configs/zookeeper.yaml
+      lowercaseOutputName: true
+      rules:
+      # replicated Zookeeper
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+)><>(\\w+)"
+        name: "zookeeper_$2"
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+)><>(\\w+)"
+        name: "zookeeper_$3"
+        labels:
+          replicaId: "$2"
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+)><>(\\w+)"
+        name: "zookeeper_$4"
+        labels:
+          replicaId: "$2"
+          memberType: "$3"
+      - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+), name1=replica.(\\d+), name2=(\\w+), name3=(\\w+)><>(\\w+)"
+        name: "zookeeper_$4_$5"
+        labels:
+          replicaId: "$2"
+          memberType: "$3"
     storage:
-      type: ephemeral
+      type: persistent-claim
+      class: gp2
+      size: 100Gi
+      deleteClaim: true
+    readinessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+    livenessProbe:
+      initialDelaySeconds: 15
+      timeoutSeconds: 5
+    template:
+      pod:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                  - key: "beta.kubernetes.io/instance-type"
+                    operator: In
+                    values:
+                    - r5.xlarge
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: name
+                      operator: In
+                      values:
+                        - my-cluster-zookeeper
+                topologyKey: "kubernetes.io/hostname"
   entityOperator:
-    topicOperator: {}
-    userOperator: {}
+    topicOperator:
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: "1"
+        limits:
+          memory: 512Mi
+          cpu: "1"
+    userOperator:
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: "1"
+        limits:
+          memory: 512Mi
+          cpu: "1"
