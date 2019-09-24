@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: kafkaproducertest1
+  labels:
+    app: kafkaproducertest1
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: kafkaproducertest1
+  template:
+    metadata:
+      labels:
+        app: kafkaproducertest1
+    spec:
+      containers:
+      - name: kafka
+        image: strimzi/kafka:latest-kafka-2.3.0
+        command:
+          - bash
+          - -c
+          - "bin/kafka-producer-perf-test.sh --topic testtopic1 --num-records 1000000000 --record-size 5000 --producer-props bootstrap.servers=my-cluster-kafka-bootstrap:9092 acks=-1 --throughput -1 --print-metrics 2>&1 | tee /var/log/kafka/ppt.log ; echo sleeping...infinitely ; sleep infinity"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/instance-type
+                operator: In
+                values:
+                - c5.2xlarge
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: kafkaproducertest2
+  labels:
+    app: kafkaproducertest2
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: kafkaproducertest2
+  template:
+    metadata:
+      labels:
+        app: kafkaproducertest2
+    spec:
+      containers:
+      - name: kafka
+        image: strimzi/kafka:latest-kafka-2.3.0
+        command:
+          - bash
+          - -c
+          - "bin/kafka-producer-perf-test.sh --topic testtopic2 --num-records 1000000000 --record-size 5000 --producer-props bootstrap.servers=my-cluster-kafka-bootstrap:9092 acks=-1 --throughput -1 --print-metrics 2>&1 | tee /var/log/kafka/ppt.log ; echo sleeping...infinitely ; sleep infinity"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/instance-type
+                operator: In
+                values:
+                - c5.2xlarge
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: kafkaproducertest3
+  labels:
+    app: kafkaproducertest3
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: kafkaproducertest3
+  template:
+    metadata:
+      labels:
+        app: kafkaproducertest3
+    spec:
+      containers:
+      - name: kafka
+        image: strimzi/kafka:latest-kafka-2.3.0
+        command:
+          - bash
+          - -c
+          - "bin/kafka-producer-perf-test.sh --topic testtopic3 --num-records 1000000000 --record-size 5000 --producer-props bootstrap.servers=my-cluster-kafka-bootstrap:9092 acks=-1 --throughput -1 --print-metrics 2>&1 | tee /var/log/kafka/ppt.log ; echo sleeping...infinitely ; sleep infinity"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/instance-type
+                operator: In
+                values:
+                - c5.2xlarge
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: kafkaproducertest4
+  labels:
+    app: kafkaproducertest4
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: kafkaproducertest4
+  template:
+    metadata:
+      labels:
+        app: kafkaproducertest4
+    spec:
+      containers:
+      - name: kafka
+        image: strimzi/kafka:latest-kafka-2.3.0
+        command:
+          - bash
+          - -c
+          - "bin/kafka-producer-perf-test.sh --topic testtopic4 --num-records 1000000000 --record-size 5000 --producer-props bootstrap.servers=my-cluster-kafka-bootstrap:9092 acks=-1 --throughput -1 --print-metrics 2>&1 | tee /var/log/kafka/ppt.log ; echo sleeping...infinitely ; sleep infinity"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/instance-type
+                operator: In
+                values:
+                - c5.2xlarge

@@ -10,7 +10,7 @@ spec:
       strimzi.io/kind: Kafka
   namespaceSelector:
     matchNames:
-      - myproject
+      - default
   endpoints:
   #### job_name: kubernetes-cadvisor
   # configured in additional secret
