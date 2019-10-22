@@ -4,6 +4,7 @@ metadata:
   name: kafka-service-monitor
   labels:
     app: strimzi
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
@@ -11,6 +12,8 @@ spec:
   namespaceSelector:
     matchNames:
       - default
+      - kafka
+      - kube-system
   endpoints:
   #### job_name: kubernetes-cadvisor
   # configured in additional secret

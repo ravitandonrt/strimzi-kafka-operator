@@ -1,0 +1,27 @@
+Pivots so far:
+TF/ANSIBLE tech debt
+NVME perf
+
+lifetime:
+
+new cluster:
+
+k8s:
+Portworx w/ NVMe
+
+
+
+Portworx:
+base cost per cluster? or multiple clusters
+dr - cost per two clusters?
+dr without storage
+blended storage - EBS
+size tmo
+
+ext4
+
+Primary prd: i3en.3xLarge - 7.5 TB x 21 nodes
+instance store: i3.4xLarge - 1.9x2 TB x 12 nodes
+Secondary NC: i3.4xLarge - 1.9x2 TB x 18 nodes
+MM (second): r4.2xlarge - 16TB st1 x 12 nodes
+McD: i3.4xLarge - 1.9x2 TB x 48 Nodes

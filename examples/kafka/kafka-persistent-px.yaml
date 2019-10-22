@@ -43,6 +43,10 @@ spec:
         "InitiatingHeapOccupancyPercent": 35
         "ExplicitGCInvokesConcurrent": true
         "UseParNewGC": false
+        "MetaspaceSize": "96m"
+        "G1HeapRegionSize": "16m"
+        "MinMetaspaceFreeRatio": 50
+        "MaxMetaspaceFreeRatio": 80
     metrics:
       # Inspired by config from Kafka 2.0.0 example rules:
       # https://github.com/prometheus/jmx_exporter/blob/master/example_configs/kafka-2_0_0.yml
@@ -131,18 +135,10 @@ spec:
         labels:
           quantile: "0.$4"
     storage:
-      type: jbod
-      volumes:
-      - id: 0
-        type: persistent-claim
-        class: st1
-        size: 2Ti
-        deleteClaim: true
-      - id: 1
-        type: persistent-claim
-        class: st1
-        size: 2Ti
-        deleteClaim: true
+      type: persistent-claim
+      class: portworx-sc-kf
+      size: 1Ti
+      deleteClaim: true
     rack:
       topologyKey: failure-domain.beta.kubernetes.io/zone
     readinessProbe:
@@ -153,6 +149,7 @@ spec:
       timeoutSeconds: 5
     template:
       pod:
+        schedulerName: "stork"
         affinity:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
@@ -161,16 +158,7 @@ spec:
                   - key: "beta.kubernetes.io/instance-type"
                     operator: In
                     values:
-                    - r5.2xlarge
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpressions:
-                    - key: name
-                      operator: In
-                      values:
-                        - my-cluster-kafka
-                topologyKey: "kubernetes.io/hostname"
+                    - i3en.2xlarge
   zookeeper:
     replicas: 3
     jvmOptions:
@@ -200,7 +188,7 @@ spec:
           memberType: "$3"
     storage:
       type: persistent-claim
-      class: gp2
+      class: portworx-sc-zk
       size: 100Gi
       deleteClaim: true
     readinessProbe:
@@ -211,6 +199,7 @@ spec:
       timeoutSeconds: 5
     template:
       pod:
+        schedulerName: "stork"
         affinity:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
@@ -219,16 +208,7 @@ spec:
                   - key: "beta.kubernetes.io/instance-type"
                     operator: In
                     values:
-                    - r5.xlarge
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpressions:
-                    - key: name
-                      operator: In
-                      values:
-                        - my-cluster-zookeeper
-                topologyKey: "kubernetes.io/hostname"
+                    - i3en.xlarge
   entityOperator:
     topicOperator:
       resources:
